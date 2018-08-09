@@ -1,0 +1,354 @@
+from flask import jsonify, request, g
+from app.models.models import *
+from . import api
+from .. import common
+import datetime
+from .. import geo
+import json
+from functools import wraps
+from IPy import IP
+from app.api.decorator import *
+from app.models import db
+from app.models.industrial_internet_models import *
+
+
+@api.route('/dns/test01', methods=['GET'])
+def test01():
+	query = Agg_Subscriber_Csp_Cloud_Daily.query.filter_by(resolved_ip_network='公有云').filter_by(date=20180228).order_by(db.desc(Agg_Subscriber_Csp_Cloud_Daily.resolved_number)).limit(10)
+	result = common.trueReturn('123', 'success')
+	if query:
+		result_list = json.loads(json.dumps([x.to_dict() for x in query]))
+		result = common.trueReturn(result_list, 'success')
+	else:
+		result = common.falseReturn('', 'failed')
+	return jsonify(result)
+
+# 企业指数详情-某日用户公有云访问量排名（10）
+# agg_subscriber_name_and_resolved_ip_network_daily
+@api.route('/dns/get-enterprise-index-detail-daily', methods=['POST'])
+def getEnterpriseIndexDetailDaily():
+	date = request.get_json()['date']
+	query = db.session.query(AggSubscriberNameAndResolvedIpNetworkDaily.subscriber_name,
+		AggSubscriberNameAndResolvedIpNetworkDaily.resolved_number).filter_by(date=date)\
+		.order_by(db.desc(AggSubscriberNameAndResolvedIpNetworkDaily.resolved_number))\
+		.filter_by(resolved_ip_network='公有云').limit(10)
+	subscriber_name = []
+	resolved_number = []
+	for item in query:
+		subscriber_name.append(item[0])
+		resolved_number.append(int(item[1]))
+	result_dict = {"subscriber_name": subscriber_name, "resolved_number": resolved_number}
+	result = common.trueReturn(result_dict, 'success')
+	return jsonify(result)
+
+# @api.route('/dns/get-agg-subscriber-csp-cloud-daily', methods=['POST'])
+# def getAggSubscriberCspCloudDaily():
+# 	date = request.get_json()['date']
+# 	query = Agg_Subscriber_Csp_Cloud_Daily.getAggSubscriberCspCloudDaily(Agg_Subscriber_Csp_Cloud_Daily, date, '公有云')
+# 	if query:
+# 		result_list = json.loads(json.dumps([x.to_dict() for x in query]))
+# 		result = common.trueReturn(result_list, 'success')
+# 	else:
+# 		result = common.falseReturn('', 'failed')
+# 	return jsonify(result)
+
+# 企业指数详情-过去一周用户公有云访问量排名（10）
+# agg_subscriber_name_and_resolved_ip_network_weekly
+@api.route('/dns/get-enterprise-index-detail-weekly', methods=['GET'])
+def getEnterpriseIndexDetailWeekly():
+	year = 2018
+	week = 12
+	query = db.session.query(AggSubscriberNameAndResolvedIpNetworkWeekly.subscriber_name,
+		AggSubscriberNameAndResolvedIpNetworkWeekly.resolved_number).filter_by(year=year).filter_by(week=week)\
+		.order_by(db.desc(AggSubscriberNameAndResolvedIpNetworkWeekly.resolved_number))\
+		.filter_by(resolved_ip_network='公有云').limit(10)
+	subscriber_name = []
+	resolved_number = []
+	for item in query:
+		subscriber_name.append(item[0])
+		resolved_number.append(int(item[1]))
+	result_dict = {"year": year, "week": week, "subscriber_name": subscriber_name, "resolved_number": resolved_number}
+	result = common.trueReturn(result_dict, 'success')
+	return jsonify(result)
+# @api.route('/dns/get-agg-subscriber-csp-cloud-weekly', methods=['POST'])
+# def getAggSubscriberCspCloudWeekly():
+# 	date = request.get_json()['date']
+# 	query = Agg_Subscriber_Csp_Cloud_Weekly.getAggSubscriberCspCloudWeekly(Agg_Subscriber_Csp_Cloud_Weekly, date, '公有云')
+# 	if query:
+# 		result_list = json.loads(json.dumps([x.to_dict() for x in query]))
+# 		result = common.trueReturn(result_list, 'success')
+# 	else:
+# 		result = common.falseReturn('', 'failed')
+# 	return jsonify(result)
+
+# 平台指数详情
+# agg_user_type_and_resolved_ip_network_daily
+@api.route('/dns/get-platform-index-detail-daily', methods=['POST'])
+def getPlatformIndexDetailDaily():
+	date = request.get_json()['date']
+	query = db.session.query(AggUserTypeAndResolvedIpNetworkDaily.resolved_ip_network,
+		AggUserTypeAndResolvedIpNetworkDaily.resolved_number).filter_by(user_type=0)\
+		.filter_by(date=date).filter(AggUserTypeAndResolvedIpNetworkDaily.resolved_ip_network != '公有云').all()
+	name_list = []
+	value_list = []
+	for item in query:
+		name_list.append(item[0])
+		value_list.append({"name": item[0], "value": int(item[1])})
+	result_dict = {"name": name_list, "value": value_list}
+	result = common.trueReturn(result_dict, 'success')
+	return jsonify(result)
+# @api.route('/dns/get-platform-index-detail-daily', methods=['POST'])
+# def getPlatformIndexDetailDaily():
+# 	date = request.get_json()['date']
+# 	query = Agg_Csp_Daily.getAggCspDaily(Agg_Csp_Daily, date)
+# 	if query:
+# 		result_list = json.loads(json.dumps([x.to_dict() for x in query]))
+# 		result = common.trueReturn(result_list, 'success')
+# 	else:
+# 		result = common.falseReturn('', 'failed')
+# 	return jsonify(result)
+
+
+@api.route('/dns/get-csp-total', methods=['GET'])
+def getCspTotal():
+	query = Agg_Csp_Daily.getTotalCsp(Agg_Csp_Daily)
+	if query:
+		result_dict = {}
+		result_dict['name'] = [x[0] for x in query]
+		result_dict['value'] = [{'name': x[0], 'value': int(x[1])} for x in query]
+		result = common.trueReturn(result_dict, 'success')
+	else:
+		result = common.falseReturn('', 'failed')
+	return jsonify(result)
+
+	# 	result_dict = {}
+	# 	for item in query:
+	# 		result_dict.setdefault(item['csp_name'], [0]*24)[item['hour']] = item['count']
+	# 	result = common.trueReturn(result_dict, 'success')
+	# else:
+	# 	result = common.falseReturn('', 'failed')
+	# return jsonify(result)
+
+# 获取某一天某个公有云的访问情况
+
+
+# 对访问公有云情况进行每周汇总
+@api.route('/dns/get-agg-scp-weekly', methods=['POST'])
+def getAggCspWeekly():
+	date = request.get_json()['date']
+	query = Agg_Csp_Weekly.getAggCspWeekly(Agg_Csp_Weekly, date)
+	if query:
+		result_list = json.loads(json.dumps([x.to_dict() for x in query]))
+		result = common.trueReturn(result_list, 'success')
+	else:
+		result = common.falseReturn('', 'failed')
+	return jsonify(result)
+
+# 示范基地每日访问公有云情况
+@api.route('/dns/get-agg-subscriber-organization-and-resolved-ip-network-daily', methods=['POST'])
+def getAggSubscriberOrganizationAndResolvedIpNetworkDaily():
+	date = request.get_json()['date']
+	query = Agg_Subscriber_Organization_And_Resolved_Ip_Network_Daily.getAggSubscriberOrganizationAndResolvedIpNetworkDaily(Agg_Subscriber_Organization_And_Resolved_Ip_Network_Daily, date, '公有云')
+	if query:
+		result_list = json.loads(json.dumps([x.to_dict() for x in query]))
+		result = common.trueReturn(result_list, 'success')
+	else:
+		result = common.falseReturn('', 'failed')
+	return jsonify(result)
+
+# 示范基地每周访问公有云情况
+@api.route('/dns/get-agg-subscriber-organization-and-resolved-ip-network-weekly', methods=['POST'])
+def getAggSubscriberOrganizationAndResolvedIpNetworkWeekly():
+	date = request.get_json()['date']
+	query = Agg_Subscriber_Organization_And_Resolved_Ip_Network_Weekly.getAggSubscriberOrganizationAndResolvedIpNetworkWeekly(Agg_Subscriber_Organization_And_Resolved_Ip_Network_Weekly, date, '公有云')
+	if query:
+		result_list = json.loads(json.dumps([x.to_dict() for x in query]))
+		result = common.trueReturn(result_list, 'success')
+	else:
+		result = common.falseReturn('', 'failed')
+	return jsonify(result)
+
+
+# 应用服务指数
+@api.route('/dns/get-agg-is-focused-domain-category-weekly', methods=['POST'])
+def getAggIsFocusedDomainCategoryWeekly():
+	date = request.get_json()['date']
+	query = Agg_Is_Focused_Domain_Category_Weekly.getAggIsFocusedDomainCategoryWeekly(Agg_Is_Focused_Domain_Category_Weekly, date)
+	if query:
+		result_list = json.loads(json.dumps([x.to_dict() for x in query]))
+		result = common.trueReturn(result_list, 'success')
+	else:
+		result = common.falseReturn('', 'failed')
+	return jsonify(result)
+
+# 应用服务指数
+@api.route('/dns/get-agg-is-focused-domain-category-daily', methods=['POST'])
+def getAggIsFocusedDomainCategoryDaily():
+	date = request.get_json()['date']
+	query = Agg_Is_Focused_Domain_Category_Daily.getAggIsFocusedDomainCategoryDaily(Agg_Is_Focused_Domain_Category_Daily, date)
+	if query:
+		result_list = json.loads(json.dumps([x.to_dict() for x in query]))
+		result = common.trueReturn(result_list, 'success')
+	else:
+		result = common.falseReturn('', 'failed')
+	return jsonify(result)
+
+# 金融服务指数
+@api.route('/dns/get-agg-is-focused-domain-weekly', methods=['POST'])
+def getAggIsFocusedDomainWeekly():
+	date = request.get_json()['date']
+	query = Agg_Is_Focused_Domain_Weekly.getAggIsFocusedDomainWeekly(Agg_Is_Focused_Domain_Weekly, date, '供应链平台')
+	if query:
+		result_list = json.loads(json.dumps([x.to_dict() for x in query]))
+		result = common.trueReturn(result_list, 'success')
+	else:
+		result = common.falseReturn('', 'failed')
+	return jsonify(result)
+
+@api.route('/dns/get-agg-is-focused-domain-daily', methods=['POST'])
+def getAggIsFocusedDomainDaily():
+	date = request.get_json()['date']
+	query = Agg_Is_Focused_Domain_Daily.getAggIsFocusedDomainDaily(Agg_Is_Focused_Domain_Daily, date, '供应链平台')
+	if query:
+		result_list = json.loads(json.dumps([x.to_dict() for x in query]))
+		result = common.trueReturn(result_list, 'success')
+	else:
+		result = common.falseReturn('', 'failed')
+	return jsonify(result)
+
+@api.route('/dns/get-agg-subscriber-city-and-resolved-ip-network-daily', methods=['POST'])
+def getAggSubscriberCityAndResolvedIpNetworkDaily():
+	date = request.get_json()['date']
+	query = Agg_Subscriber_City_And_Resolved_Ip_Network_Daily.getAggSubscriberCityAndResolvedIpNetworkDaily(Agg_Subscriber_City_And_Resolved_Ip_Network_Daily, date, '公有云')
+	if query:
+		result_list = json.loads(json.dumps([x.to_dict() for x in query]))
+		for result in result_list:
+			result['subscriber_city'] = result['subscriber_city'] + '市'
+		result = common.trueReturn(result_list, 'success')
+	else:
+		result = common.falseReturn('', 'failed')
+	return jsonify(result)
+
+# 企业指数折线图
+# agg_subscriber_name_and_resolved_ip_network_daily
+# resolved_ip_network= "公有云" && sum resolved_number group by date
+@api.route('/dns/get-enterprise-index', methods=['GET'])
+def getEnterpriseIndex():
+	query = db.session.query(AggSubscriberNameAndResolvedIpNetworkDaily.date,
+		db.func.sum(AggSubscriberNameAndResolvedIpNetworkDaily.resolved_number)).filter_by(resolved_ip_network='公有云')\
+		.group_by(AggSubscriberNameAndResolvedIpNetworkDaily.date).order_by(db.desc(AggSubscriberNameAndResolvedIpNetworkDaily.date)).limit(7)
+	date = []
+	resolved_number = []
+	for item in query:
+		date.append(item[0])
+		resolved_number.append(int(item[1]))
+	date.reverse()
+	resolved_number.reverse()
+	result_dict = {"date": date, "resolved_number": resolved_number}
+	result = common.trueReturn(result_dict, 'success')
+	return jsonify(result)
+
+# 平台指数折线图
+# agg_user_type_and_resolved_ip_network_daily
+# user_type = 0 and resolved_ip_network = "公有云"
+@api.route('/dns/get-platform-index', methods=['GET'])
+def getPlatformIndex():
+	query = db.session.query(AggUserTypeAndResolvedIpNetworkDaily.date, AggUserTypeAndResolvedIpNetworkDaily.resolved_number)\
+		.filter_by(user_type=0).filter_by(resolved_ip_network='公有云').order_by(db.desc(AggUserTypeAndResolvedIpNetworkDaily.date)).limit(7)
+	date = []
+	resolved_number = []
+	for item in query:
+		date.append(item[0])
+		resolved_number.append(int(item[1]))
+	date.reverse()
+	resolved_number.reverse()
+	result_dict = {"date": date, "resolved_number": resolved_number}
+	result = common.trueReturn(result_dict, 'success')
+	return jsonify(result)
+
+# 示范基地指数折线图
+# agg_subscriber_organization_and_resolved_ip_network_daily
+# resolved_ip_network = "公有云" and sum resolved_number group by date
+@api.route('/dns/get-demonstration-bases-index', methods=['GET'])
+def getDemonstrationBasesIndex():
+	query = db.session.query(AggSubscriberOrganizationAndResolvedIpNetworkDaily.date,
+		db.func.sum(AggSubscriberOrganizationAndResolvedIpNetworkDaily.resolved_number))\
+		.filter_by(resolved_ip_network='公有云')\
+		.group_by(AggSubscriberOrganizationAndResolvedIpNetworkDaily.date)\
+		.order_by(db.desc(AggSubscriberOrganizationAndResolvedIpNetworkDaily.date)).limit(7)
+	date = []
+	resolved_number = []
+	for item in query:
+		date.append(item[0])
+		resolved_number.append(int(item[1]))
+	date.reverse()
+	resolved_number.reverse()
+	result_dict = {"date": date, "resolved_number": resolved_number}
+	result = common.trueReturn(result_dict, 'success')
+	return jsonify(result)
+
+# 应用服务指数折线图
+# agg_is_focused_domain_category_daily
+# sum resolved_number group by date
+@api.route('/dns/get-application-service-index', methods=['GET'])
+def getApplicationServiceIndex():
+	query = db.session.query(AggIsFocusedDomainCategoryDaily.date,
+		db.func.sum(AggIsFocusedDomainCategoryDaily.resolved_number))\
+		.group_by(AggIsFocusedDomainCategoryDaily.date)\
+		.order_by(db.desc(AggIsFocusedDomainCategoryDaily.date)).limit(7)
+	date = []
+	resolved_number = []
+	for item in query:
+		date.append(item[0])
+		resolved_number.append(int(item[1]))
+	date.reverse()
+	resolved_number.reverse()
+	result_dict = {"date": date, "resolved_number": resolved_number}
+	result = common.trueReturn(result_dict, 'success')
+	return jsonify(result)
+
+# 金融服务指数折线图
+# agg_is_focused_domain_daily
+# category = "供应链平台" and sum resolved_number group by date
+@api.route('/dns/get-financial-service-index', methods=['GET'])
+def getFinancialServiceIndex():
+	query = db.session.query(AggIsFocusedDomainDaily.date,
+		db.func.sum(AggIsFocusedDomainDaily.resolved_number))\
+		.filter_by(category="供应链平台")\
+		.group_by(AggIsFocusedDomainDaily.date)\
+		.order_by(db.desc(AggIsFocusedDomainDaily.date)).limit(7)
+	date = []
+	resolved_number = []
+	for item in query:
+		date.append(item[0])
+		resolved_number.append(int(item[1]))
+	date.reverse()
+	resolved_number.reverse()
+	result_dict = {"date": date, "resolved_number": resolved_number}
+	result = common.trueReturn(result_dict, 'success')
+	return jsonify(result)
+
+# 全省发展指数折线图
+# agg_subscriber_city_and_resolved_ip_network_daily
+# resolved_ip_network = "公有云" and sum resolved_number group by date
+@api.route('/dns/get-development-index', methods=['GET'])
+def getDevelopmentIndex():
+	query = db.session.query(AggSubscriberCityAndResolvedIpNetworkDaily.date,
+		db.func.sum(AggSubscriberCityAndResolvedIpNetworkDaily.resolved_number))\
+		.filter_by(resolved_ip_network='公有云')\
+		.group_by(AggSubscriberCityAndResolvedIpNetworkDaily.date)\
+		.order_by(db.desc(AggSubscriberCityAndResolvedIpNetworkDaily.date)).limit(7)
+	date = []
+	resolved_number = []
+	for item in query:
+		date.append(item[0])
+		resolved_number.append(int(item[1]))
+	date.reverse()
+	resolved_number.reverse()
+	result_dict = {"date": date, "resolved_number": resolved_number}
+	result = common.trueReturn(result_dict, 'success')
+	return jsonify(result)
+
+
+
+

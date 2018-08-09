@@ -1,0 +1,173 @@
+from flask import jsonify, request
+from app.models import Map_Ems_IP, Interface_Info_Copy
+from app.models import db
+from . import api
+from .. import common
+import datetime
+from .. import geo
+import json
+import pandas as pd
+import numpy as np
+
+@api.route('/audit/get-device-info', methods=['POST'])
+def getDeviceInfo():
+	loopback = request.get_json()['loopback']
+	hostname = request.get_json()['hostname']
+	query = Map_Ems_IP.getInfo(Map_Ems_IP, loopback, hostname)
+	if query:
+		result_list = []
+		for item in query:
+			d = {}
+			d['id'] = item.id
+			d['hostname'] = item.hostname
+			d['model'] = item.model
+			d['OS'] = item.OS
+			d['node'] = item.node
+			d['loopback'] = item.loopback
+			d['property'] = item.property
+			result_list.append(d)
+		result = common.trueReturn(result_list, '请求成功')
+	else:
+		result = common.falseReturn('', '请求失败')
+	return jsonify(result)
+
+# 获取所有设备型号接口
+@api.route('/audit/get-model', methods=['GET'])
+def getModelName():
+	query = Map_Ems_IP.getModel(Map_Ems_IP)
+	if query:
+		result = common.trueReturn(query, '请求成功')
+	else:
+		result = common.falseReturn('', '请求失败')
+	return jsonify(result)
+
+# 筛选符合条件的设备
+@api.route('/audit/search-audited-device', methods=['POST'])
+def searchAuditedDevice():
+	hostname = request.get_json()['hostname']
+	loopback = request.get_json()['loopback']
+	model = request.get_json()['model']
+	if model:
+		query = Map_Ems_IP.getInfo(Map_Ems_IP, loopback, hostname, model)
+	else:
+		query = Map_Ems_IP.getInfo(Map_Ems_IP, loopback, hostname)
+	if query:
+		result_list = []
+		for item in query:
+			d = {}
+			d['id'] = item.id
+			d['hostname'] = item.hostname
+			d['model'] = item.model
+			d['OS'] = item.OS
+			d['node'] = item.node
+			d['loopback'] = item.loopback
+			d['property'] = item.property
+			result_list.append(d)
+		result = common.trueReturn(result_list, '请求成功')
+	else:
+		result = common.falseReturn('', '请求失败')
+	return jsonify(result)
+
+# 配置变化查询接口
+@api.route('/audit/get-config-change-info', methods=['POST'])
+def getConfigChangeInfo():
+	date = request.get_json()['date']
+	hostname = request.get_json()['hostname']
+	loopback = request.get_json()['loopback']
+
+	query1 = Interface_Info_Copy.getInfo(Interface_Info_Copy ,loopback, hostname, int(date[0]))
+	query2 = Interface_Info_Copy.getInfo(Interface_Info_Copy ,loopback, hostname, int(date[1]))
+	# query1 = Interface_Info_Copy.getInfo(Interface_Info_Copy ,'183.58.0.129', 'GD-HZ-JB-BAS-5.MAN.ME60', 20171204)
+	# query2 = Interface_Info_Copy.getInfo(Interface_Info_Copy ,'183.58.0.129', 'GD-HZ-JB-BAS-5.MAN.ME60', 20171205)
+	if query1 and query2:
+		# query_df1 = pd.read_sql_query(query, db.engine.connect().connection)
+		result1 = {}
+		result2 = {}
+		for item in query1:
+			d = {}
+			d['loopback'] = item.loopback
+			d['hostname'] = item.hostname
+			d['interface'] = item.interface
+			d['description'] = item.description
+			d['ipv4address'] = item.ipv4address
+			d['ipv6address'] = item.ipv6address
+			d['rate'] = item.rate
+			d['date'] = item.date
+			result1[str(item.id)] = d
+		for item in query2:
+			d = {}
+			d['loopback'] = item.loopback
+			d['hostname'] = item.hostname
+			d['interface'] = item.interface
+			d['description'] = item.description
+			d['ipv4address'] = item.ipv4address
+			d['ipv6address'] = item.ipv6address
+			d['rate'] = item.rate
+			d['date'] = item.date
+			result2[str(item.id)] = d
+		result1 = json.dumps(result1)
+		result2 = json.dumps(result2)
+		df_before = pd.read_json(result1, orient='index')
+		df_after = pd.read_json(result2, orient='index')
+
+		# for item in ['description', 'ipv4address', ]
+
+		# df_before['description'] = df_before['description'].apply(lambda x: np.NaN if x=='' else x)
+		# df_before['ipv4address'] = df_before['ipv4address'].apply(lambda x: np.NaN if x=='' else x)
+		# df_before['ipv6address'] = df_before['ipv6address'].apply(lambda x: np.NaN if x=='' else x)
+		# df_before['rate'] = df_before['rate'].apply(lambda x: np.NaN if x=='' else x)
+
+		# df_after['description'] = df_after['description'].apply(lambda x: np.NaN if x=='' else x)
+		# df_after['ipv4address'] = df_after['ipv4address'].apply(lambda x: np.NaN if x=='' else x)
+		# df_after['ipv6address'] = df_after['ipv6address'].apply(lambda x: np.NaN if x=='' else x)
+		# df_after['rate'] = df_after['rate'].apply(lambda x: np.NaN if x=='' else x)
+		# df_before = df_before.fillna('')
+		# df_after = df_after.fillna('')
+
+		cmp_result = pd.merge(df_before, df_after, how='outer', on=['hostname', 'interface', 'loopback'], indicator=True)
+
+		cmp_result['description_x'] = cmp_result['description_x'].apply(lambda x: '' if x is np.NaN else x)
+		cmp_result['description_y'] = cmp_result['description_y'].apply(lambda x: '' if x is np.NaN else x)
+		cmp_result['ipv4address_x'] = cmp_result['ipv4address_x'].apply(lambda x: '' if x is np.NaN else x)
+		cmp_result['ipv4address_y'] = cmp_result['ipv4address_y'].apply(lambda x: '' if x is np.NaN else x)
+		cmp_result['ipv6address_x'] = cmp_result['ipv6address_x'].apply(lambda x: '' if x is np.NaN else x)
+		cmp_result['ipv6address_y'] = cmp_result['ipv6address_y'].apply(lambda x: '' if x is np.NaN else x)
+		cmp_result['rate_x'] = cmp_result['rate_x'].apply(lambda x: '' if x is np.NaN else x)
+		cmp_result['rate_y'] = cmp_result['rate_y'].apply(lambda x: '' if x is np.NaN else x)
+
+		# cmp_result['cmp_description'] = (cmp_result.description_x != cmp_result.description_y)
+		# cmp_result['cmp_ipv4address'] = (cmp_result.ipv4address_x != cmp_result.ipv4address_y)
+		# cmp_result['cmp_ipv6address'] = (cmp_result.ipv6address_x != cmp_result.ipv6address_y)
+
+		cmp_result.ix[(cmp_result.description_x == '')&(cmp_result.description_y == ''), 'cmp_description'] = '-'
+		cmp_result.ix[(cmp_result.description_x != cmp_result.description_y), 'cmp_description'] = '是'
+		cmp_result.ix[(cmp_result.description_x == cmp_result.description_y) & (cmp_result.cmp_description != '-'), 'cmp_description'] = '否'
+
+		cmp_result.ix[(cmp_result.ipv4address_x == '')&(cmp_result.ipv4address_y == ''), 'cmp_ipv4address'] = '-'
+		cmp_result.ix[(cmp_result.ipv4address_x != cmp_result.ipv4address_y), 'cmp_ipv4address'] = '是'
+		cmp_result.ix[(cmp_result.ipv4address_x == cmp_result.ipv4address_y) & (cmp_result.cmp_ipv4address != '-'), 'cmp_ipv4address'] = '否'
+
+		cmp_result.ix[(cmp_result.ipv6address_x == '')&(cmp_result.ipv6address_y == ''), 'cmp_ipv6address'] = '-'
+		cmp_result.ix[(cmp_result.ipv6address_x != cmp_result.ipv6address_y), 'cmp_ipv6address'] = '是'
+		cmp_result.ix[(cmp_result.ipv6address_x == cmp_result.ipv6address_y) & (cmp_result.cmp_ipv6address != '-'), 'cmp_ipv6address'] = '否'
+
+		cmp_result.ix[(cmp_result.rate_x == '')&(cmp_result.rate_y == ''), 'cmp_rate'] = '-'
+		cmp_result.ix[(cmp_result.rate_x != cmp_result.rate_y), 'cmp_rate'] = '是'
+		cmp_result.ix[(cmp_result.rate_x == cmp_result.rate_y) & (cmp_result.cmp_rate != '-'), 'cmp_rate'] = '否'
+
+		cmp_result.ix[(cmp_result._merge == 'both'), 'action'] = '修改'
+		cmp_result.ix[(cmp_result._merge == 'left_only'), 'action'] = '新增'
+		cmp_result.ix[(cmp_result._merge == 'right_only'), 'action'] = '删除'
+
+
+
+		# cmp_result['cmp_rate'] = (cmp_result.rate_x != cmp_result.rate_y)
+		cmp_result = cmp_result[(cmp_result.cmp_description == '是') | (cmp_result.cmp_ipv4address == '是') | (cmp_result.cmp_ipv6address  == '是') | (cmp_result.cmp_rate  == '是')]
+		cmp_json = cmp_result.to_json(orient='records')
+		# print(cmp_json)
+		result = common.trueReturn(json.loads(cmp_json), '请求成功')
+	else:
+		result = common.falseReturn('', '请求失败')
+	return jsonify(result)
+
+
