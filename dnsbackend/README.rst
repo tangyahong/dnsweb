@@ -1,15 +1,15 @@
-dnsweb
-======
+dnsbackend
+==========
 
-.. image:: https://img.shields.io/pypi/v/dnsweb.svg
-    :target: https://pypi.python.org/pypi/dnsweb
+.. image:: https://img.shields.io/pypi/v/dnsbackend.svg
+    :target: https://pypi.python.org/pypi/dnsbackend
     :alt: Latest PyPI version
 
 .. image:: https://travis-ci.org/borntyping/cookiecutter-pypackage-minimal.png
    :target: https://travis-ci.org/borntyping/cookiecutter-pypackage-minimal
    :alt: Latest Travis CI build status
 
-An opinionated, minimal cookiecutter template for Python packages
+dns analysis web backend
 
 Usage
 -----
@@ -29,4 +29,4 @@ Licence
 Authors
 -------
 
-`dnsweb` was written by `fourth04 <524135921@qq.com>`_.
+`dnsbackend` was written by `fourth04 <GYangyun@gmail.com>`_.

@@ -1,0 +1,165 @@
+<template>
+  <div class="container">
+    <el-container style="height: 100%;">
+      <el-header style="font-size: 14px; background-color:#2F3848; height: 50px; margin-left: 0;">
+        <div style="width:180px; text-align: center">
+          <div style="height: 50px; float:left; margin-left:0px">
+            <icon name="DNS" scale="4" height="50px"></icon>
+          </div>
+          <div style="height: 50px; float:left;">
+            <span style="font-size: 15px; font-weight:bold; margin-left:5px; color:#FFF">日志分析系统</span>
+          </div>
+        </div>
+        <div style="float:right">
+        <el-dropdown @command="handleCommand">
+            <span class="el-dropdown-link">
+              {{ username }}<i class="el-icon-arrow-down el-icon--right"></i>
+            </span>
+            <el-dropdown-menu slot="dropdown" align="center">
+              <!-- <el-dropdown-item command="edit">编辑信息</el-dropdown-item> -->
+              <el-dropdown-item command="quit">退出</el-dropdown-item>
+            </el-dropdown-menu>
+          </el-dropdown>
+        </div>
+        <div style="float:right">
+          <icon name="avatar" scale="4" height="50px" style="margin-right:10px"></icon>
+        </div>
+      </el-header>
+
+      <el-container>
+        <el-aside width="180px" style="position:absolute; height:calc(100% - 50px); overflow: auto; bottom: 0; background-color: #263445;">
+          <el-menu
+            class="el-menu-vertical-demo"
+            :router="true"
+            :default-active=default_active
+            background-color="#263445"
+            text-color="#FFF"
+            :default-openeds=openeds
+            active-text-color="#3C8FE5">
+            <el-menu-item index="/dns-dashboard">
+              <icon name="dashboard" scale="2" style="margin-top:-5px;padding-right: 8px"></icon>Dashboard
+            </el-menu-item>
+            <el-menu-item index="/dns-topn">
+              <icon name="TopN" scale="2" style="margin-top:-5px;padding-right: 8px"></icon>TOPN域名分析
+            </el-menu-item>
+            <el-menu-item index="/dns-resourceanalysis">
+              <icon name="resource" scale="2" style="margin-top:-5px;padding-right: 8px"></icon>资源分布分析
+            </el-menu-item>
+            <el-menu-item index="/dns-cdnanalysis">
+              <icon name="cdn" scale="2" style="margin-top:-5px;padding-right: 8px"></icon>CDN分析
+            </el-menu-item>
+            <el-menu-item index="/dns-industry">
+              <icon name="industry" scale="2" style="margin-top:-5px;padding-right: 8px"></icon>重点行业分析
+            </el-menu-item>
+            <el-submenu index="1">
+              <template slot="title"><icon name="domain" scale="2" style="margin-top:-5px;padding-right: 8px"></icon>重点域名分析</template>
+                <el-menu-item index="/dns-keydomain">重点域名展示</el-menu-item>
+                <el-menu-item index="/dns-keydomainmanage">重点域名管理</el-menu-item>
+            </el-submenu>
+            <el-submenu index="2">
+              <template slot="title"><icon name="search" scale="2" style="margin-top:-5px;padding-right: 8px"></icon>多维度查询</template>
+                <el-menu-item index="/dns-ip-inverse-query">IP地址反查</el-menu-item>
+                <el-menu-item index="/dns-beiansearch">备案信息查询</el-menu-item>
+            </el-submenu>
+            <el-menu-item index="/dns-features">
+              <icon name="draw" scale="2" style="margin-top:-5px;padding-right: 8px"></icon>专线用户分析
+            </el-menu-item>
+          </el-menu>
+        </el-aside>
+
+
+        <el-main style="position:absolute; margin-left: 180px; width: calc(100% - 180px); height:calc(100% - 50px);">
+          <transition name="fade" mode="out-in">
+            <router-view></router-view>
+          </transition>
+        </el-main>
+      </el-container>
+
+    </el-container>
+  </div>
+</template>
+
+<script>
+  export default {
+    data() {
+      return {
+        'username': '',
+        openeds: ['2'],
+        default_active:'/dns-dashboard'
+      }
+    },
+    methods: {
+      showNavbar () {
+        this.$lockr.set('username', '管理员');
+        //console.log(localStorage.getItem('username'));
+      },
+      showInfo () {
+        this.username = this.$lockr.get('username');
+      },
+      selectItem() {
+        this.default_active = this.$route.path;
+      },
+      logout() {
+        this.$router.push({path:'/'});
+        this.$lockr.rm('token')
+      },
+      handleCommand(command){
+        if(command == 'quit'){
+          this.logout()
+        }
+      }
+    },
+    created (){
+      this.showNavbar()
+    },
+    mounted () {
+      this.showInfo();
+      this.selectItem();
+    }
+  }
+</script>
+
+<style lang="scss" scoped>
+  ::-webkit-scrollbar
+  {
+    width: 0;
+  }
+  .el-menu-vertical-demo:not(.el-menu--collapse) {
+    width: 180px;
+  }
+  #app {
+    height: 100%;
+  }
+
+  body {
+    margin: 0 auto 0 0;
+    height: 100%;
+  }
+
+  .el-header {
+    line-height: 50px;
+  }
+  .el-menu-item {
+    min-width: 180px;
+  }
+  .el-submenu {
+    min-width: 180px;
+    .el-menu-item {
+      min-width: 180px;
+    }
+  }
+  ul > li.el-submenu > ul > li.el-submenu > ul > li {
+    margin-left:-20px;
+  }
+
+  .el-dropdown-link {
+    cursor: pointer;
+    color:#FFF;
+    /* font-weight: bold; */
+    /* color: #409EFF; */
+  }
+  .el-icon-arrow-down {
+    font-size: 12px;
+    /* font-weight: bold; */
+  }
+</style>
