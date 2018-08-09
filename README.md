@@ -6,7 +6,7 @@
 
 ```bash
 cd dnsbackend
-pip install -r requirements
+pip install -r requirements.txt
 ```
 
 ### 后端环境安装
