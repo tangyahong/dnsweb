@@ -10,7 +10,8 @@ class DevConfig(Config):
     """Development config class."""
     DEBUG = True
     # MySQL connection
-    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://gdnoc:123456Qw!@127.0.0.1:3306/test_system'
+    # SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://gdnoc:123456Qw!@127.0.0.1:3306/test_system'
+    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://root:123456Qw!@127.0.0.1:33066/test_system'
     SQLALCHEMY_BINDS = {
         'dns':'mysql+pymysql://kfsyy:Kfsyy@2017@132.96.82.7:3306/dns',
         'dns_local': 'mysql+pymysql://gdnoc:123456Qw!@127.0.0.1:3306/dns',
